@@ -24,3 +24,4 @@ Pass along the paths of the config file and the output csv to the program. <br>
 The traffic stats of all repositories associated with the particular user are stored in the CSV. <br>
 `python get_traffic.py -c config.ini -o output.csv` <br>
 
+PS : Open to enhancements and issues. Next up, making a cron job to update via email/SMS whenever there are traffic updates.
