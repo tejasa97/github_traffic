@@ -11,18 +11,15 @@ config = configparser.ConfigParser()
 
 class UserStats():
 
-    def __init__(self, df_path=None, configFile=None):
+    def __init__(self, configFile=None):
         config.read(configFile)
-
-        self.df_path = df_path
-        self.df = pd.read_csv(df_path) if os.path.exists(df_path) else pd.DataFrame(columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks'])
         self.token = config["github"]["token"]
     
     def updateUserStats(self):
-        df = self.df
         g = Github(self.token)
 
         user = g.get_user()
+        self.user_name = user.name
         print(f">>> Getting repo details of user {user.name} with GitHub url : {user.html_url} ...")
         repos = user.get_repos()
 
@@ -40,6 +37,7 @@ class UserStats():
         while len(threads):
             threads = [t for t in threads if t.is_alive()]
 
+        df = pd.read_csv(f'{self.user_name}.csv') if os.path.exists(f'{self.user_name}.csv') else pd.DataFrame(columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks'])
         changed = False
         # Evaluate all repo results and update output CSV accordingly
         for row in results:
@@ -59,7 +57,7 @@ class UserStats():
 
         # Update output CSV only if it's outdated
         if changed:
-            df.to_csv(f"{self.df_path}", index=None)
+            df.to_csv(f'{self.user_name}.csv', index=None)
 
     def updateRepoStats(self, repo, results, idx):
         row = [
@@ -74,12 +72,11 @@ class UserStats():
 def main():
     parser = argparse.ArgumentParser(description="Download traffic stats of a GitHub user account")
     parser.add_argument("-c", metavar="config", help="config file location", required=True)
-    parser.add_argument("-o", metavar="output csv", help="output csv location", required=True)
     args = parser.parse_args()
 
-    stats = UserStats(df_path=args.o, configFile=args.c)
+    stats = UserStats(configFile=args.c)
     stats.updateUserStats()
-    print(f">>> Successfully obtained details and saved at '{stats.df_path}'")
+    print(f">>> Successfully obtained details and saved at '{stats.user_name}'")
 
 if __name__=='__main__':
     main()
