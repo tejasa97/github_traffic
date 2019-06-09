@@ -76,7 +76,7 @@ def main():
 
     stats = UserStats(configFile=args.c)
     stats.updateUserStats()
-    print(f">>> Successfully obtained details and saved at '{stats.user_name}'")
+    print(f">>> Successfully obtained details and saved at '{stats.user_name}.csv'")
 
 if __name__=='__main__':
     main()
