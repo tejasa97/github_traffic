@@ -17,7 +17,6 @@ class UserStats():
     
     def updateUserStats(self):
         g = Github(self.token)
-
         user = g.get_user()
         self.user_name = user.name
         print(f">>> Getting repo details of user {user.name} with GitHub url : {user.html_url} ...")
@@ -37,7 +36,7 @@ class UserStats():
         while len(threads):
             threads = [t for t in threads if t.is_alive()]
 
-        df = pd.read_csv(f'{self.user_name}.csv') if os.path.exists(f'{self.user_name}.csv') else pd.DataFrame(columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks'])
+        df = pd.read_csv(f'{self.user_name}.csv') if os.path.exists(f'{self.user_name}.csv') else pd.DataFrame(columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks', 'Clones'])
         changed = False
         # Evaluate all repo results and update output CSV accordingly
         for row in results:
@@ -50,7 +49,7 @@ class UserStats():
             else:
                 df = df.append(pd.DataFrame(
                     [row], 
-                    columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks']), 
+                    columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks', 'Clones']), 
                     ignore_index=True
                 )
                 changed=True
@@ -65,7 +64,8 @@ class UserStats():
             repo.get_views_traffic()['count'], 
             repo.stargazers_count, 
             repo.watchers_count, 
-            repo.forks_count
+            repo.forks_count,
+            repo.get_clones_traffic()['count']
         ]
         results[idx] = row
 
