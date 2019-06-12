@@ -17,7 +17,7 @@ token=<your_token>
 
 
 2. ***Install the GitHub API***. <br>
-`python install -r requirements.txt`
+`pip install -r requirements.txt`
 
 ### Fire it up! <br>
 Pass along the paths of the config file and the output csv to the program. <br>
