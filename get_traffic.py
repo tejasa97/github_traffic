@@ -1,82 +1,91 @@
 from github import Github
-from threading import Thread
+from multiprocessing import Pool, Process
 
-import argparse
-import os
-import pandas as pd
-import numpy as np
 import configparser
+import pandas as pd
 
+config_file = 'config.ini'
 config = configparser.ConfigParser()
 
-class UserStats():
+class GithubTraffic():
+    """
+    Class that extracts the repo traffic stats of a github user
+    """
 
-    def __init__(self, configFile=None):
-        config.read(configFile)
-        self.token = config["github"]["token"]
+    def __init__(self, token):
     
-    def updateUserStats(self):
+        self.token = token
+
+        self.get_user()
+
+    def get_user(self):
+        """
+        Gets the user using the Personal Access token
+        """
+
         g = Github(self.token)
-        user = g.get_user()
-        self.user_name = user.name
-        print(f">>> Getting repo details of user {user.name} with GitHub url : {user.html_url} ...")
-        repos = user.get_repos()
 
-        results = [None] * repos.totalCount
-        idx = 0
-        threads = []
-        for repo in repos:
-            # Spawn a thread for each repo 
-            t = Thread(target=self.updateRepoStats, args=(repo,results,idx,))
-            t.start()
-            threads.append(t)
-            idx += 1
+        self.user = g.get_user()
+        self.user_name = self.user.login
 
-        # Wait for all threads to execute
-        while len(threads):
-            threads = [t for t in threads if t.is_alive()]
+    def get_user_repos(self):
+        """
+        Gets all the repos of the user
+        """
 
-        df = pd.read_csv(f'{self.user_name}.csv') if os.path.exists(f'{self.user_name}.csv') else pd.DataFrame(columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks', 'Clones'])
-        changed = False
-        # Evaluate all repo results and update output CSV accordingly
-        for row in results:
-            existing_entry = (df.Repo == row[0]).any()
+        return self.user.get_repos()
 
-            if existing_entry:
-                if not np.array_equal(np.array(row, dtype=object), df.loc[df.Repo == row[0]].values[0]):
-                    df.loc[df.Repo == row[0]] = row
-                    changed=True
-            else:
-                df = df.append(pd.DataFrame(
-                    [row], 
-                    columns=['Repo', 'Views', 'Stars', 'Watching', 'Forks', 'Clones']), 
-                    ignore_index=True
-                )
-                changed=True
+    @staticmethod
+    def get_repo_stats(repo):
+        """
+        Get the stats of the repo.
+        Ideally should be parallelized because the `repo.get_views_traffic()` method is blocking.
+        """
 
-        # Update output CSV only if it's outdated
-        if changed:
-            df.to_csv(f'{self.user_name}.csv', index=None)
+        return {
+                'Repository' : repo.full_name,
+                'Views'      : repo.get_views_traffic()['count'],
+                'Stars'      : repo.stargazers_count,
+                'Watchers'   : repo.watchers_count,
+                'Forks'      : repo.forks_count,
+                'Clones'     : repo.get_clones_traffic()['count']
+            }
 
-    def updateRepoStats(self, repo, results, idx):
-        row = [
-            repo.name, 
-            repo.get_views_traffic()['count'], 
-            repo.stargazers_count, 
-            repo.watchers_count, 
-            repo.forks_count,
-            repo.get_clones_traffic()['count']
-        ]
-        results[idx] = row
+    def update_traffic_stats(self):
+        """
+        Get the latest traffic stats for the user
+        """
 
-def main():
-    parser = argparse.ArgumentParser(description="Download traffic stats of a GitHub user account")
-    parser.add_argument("-c", metavar="config", help="config file location", required=True)
-    args = parser.parse_args()
+        print(f"Extracting repo stats of '{self.user_name}'...")
 
-    stats = UserStats(configFile=args.c)
-    stats.updateUserStats()
-    print(f">>> Successfully obtained details and saved at '{stats.user_name}.csv'")
+        p = Pool(5)
+        repos_stats = p.map(GithubTraffic.get_repo_stats, self.get_user_repos())
+        print(f"Extracted {len(repos_stats)} repos!\n")
+
+        print("Saving the repo stats...")
+
+        df_handler = DFHandler(username=self.user_name)
+        df_handler.save(stats=repos_stats)
+        print(f"Successfully saved to {df_handler.csv}")
+
+class DFHandler():
+
+    def __init__(self, username=None):
+
+        self.csv = f'{username}.csv'
+
+    def save(self, stats):
+        """
+        Save the repo stats to a CSV
+        """
+
+        df = pd.DataFrame(stats)
+        df.to_csv(self.csv, index=False)
 
 if __name__=='__main__':
-    main()
+
+    config.read(config_file)
+    token = config['github']['token'] 
+
+    traffic_client = GithubTraffic(token)
+    traffic_client.update_traffic_stats()
