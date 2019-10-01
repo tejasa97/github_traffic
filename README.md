@@ -7,7 +7,7 @@ Presenting, a GitHub traffic scraper to keep you on top of your repository traff
 
 ## A couple of pre-requisites before you kick off.
 1. ***GitHub Personal Access token***! (because identity).<br>
-Just generate a new token (can set it up for only **repo read** permissions); can also use an existing one. <br>
+Just generate a new token (can set it up for only **repo read** permissions); you can also use an existing one. <br>
 Assign it to ***token*** in the **config.ini** file. <br>
 
 ```
